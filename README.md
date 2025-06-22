@@ -1,0 +1,333 @@
+# Telegram SOCKS5 Proxy
+
+A highly secure, feature-rich SOCKS5 proxy server specifically designed for Telegram with advanced security layers, rate limiting, authentication, and monitoring capabilities.
+
+## Features
+
+### Security
+
+- **Multi-layer Authentication**: Username/password authentication with SHA-256 hashing
+- **Rate Limiting**: Configurable per-IP rate limiting with sliding window
+- **Telegram-only Access**: Restricts connections to Telegram servers only
+- **Docker Security**: Non-root user, read-only filesystem, capability dropping
+- **Firewall Integration**: Automated iptables/ufw configuration
+- **Encryption Support**: Built-in encryption capabilities for enhanced security
+
+### Monitoring & Management
+
+- **Prometheus Metrics**: Comprehensive metrics for monitoring
+- **Health Checks**: Built-in health monitoring for Docker
+- **Grafana Dashboards**: Optional visualization with pre-configured dashboards
+- **Structured Logging**: Detailed logging with security considerations
+
+### Performance
+
+- **Async/Await**: High-performance async Python implementation
+- **uvloop Integration**: Enhanced event loop for better performance
+- **Connection Pooling**: Efficient connection management
+- **Resource Limits**: Configurable resource constraints
+
+## Quick Start
+
+### Prerequisites
+
+- Docker and Docker Compose
+- Linux server (Ubuntu/Debian/CentOS recommended)
+- Root or sudo access for firewall configuration
+
+### One-Command Deployment
+
+```bash
+chmod +x deploy.sh
+./deploy.sh
+```
+
+### With Monitoring Stack
+
+```bash
+./deploy.sh --monitoring
+```
+
+### Custom Port
+
+```bash
+./deploy.sh --port 8080
+```
+
+## Configuration
+
+### Environment Variables
+
+Edit `config/proxy.env` to customize settings:
+
+```bash
+# Server settings
+PROXY_HOST=0.0.0.0
+PROXY_PORT=1080
+MAX_CONNECTIONS=1000
+
+# Security settings
+AUTH_REQUIRED=true
+RATE_LIMIT_PER_IP=10
+RATE_LIMIT_WINDOW=60
+
+# Authentication
+PROXY_AUTH_TOKENS={"admin": "your_password_hash"}
+ADMIN_TOKEN=your_secure_admin_token
+
+# Monitoring
+METRICS_PORT=8080
+```
+
+### Generate Password Hash
+
+```bash
+echo -n "your_password" | sha256sum
+```
+
+## Security Features
+
+### Network Security
+
+- Firewall rules automatically configured
+- Only Telegram IPs/domains allowed
+- Rate limiting per client IP
+- DDoS protection mechanisms
+
+### Container Security
+
+- Non-root user execution
+- Read-only root filesystem
+- Dropped Linux capabilities
+- No new privileges allowed
+- Minimal attack surface with Alpine Linux
+
+### Authentication & Authorization
+
+- Mandatory authentication (configurable)
+- Secure password hashing (SHA-256)
+- Token-based admin access
+- Session management
+
+## Usage
+
+### Telegram Configuration
+
+1. Open Telegram settings
+2. Go to Advanced → Connection Type
+3. Select "Use Custom Proxy"
+4. Choose SOCKS5
+5. Enter your server details:
+   - **Server**: Your server IP
+   - **Port**: 1080 (or custom port)
+   - **Username**: admin
+   - **Password**: Your ADMIN_TOKEN
+
+### Management Scripts
+
+After deployment, use these scripts:
+
+```bash
+# Start the proxy
+./start-proxy.sh
+
+# Stop the proxy
+./stop-proxy.sh
+
+# View logs
+./logs-proxy.sh
+
+# Update the proxy
+./update-proxy.sh
+```
+
+## Monitoring
+
+### Metrics Endpoint
+
+Access metrics at: `http://your-server:8080/metrics`
+
+### Prometheus (if enabled)
+
+Access at: `http://your-server:9090`
+
+### Grafana (if enabled)
+
+Access at: `http://your-server:3000`
+
+- Username: admin
+- Password: change_this_password
+
+## Troubleshooting
+
+### Check Service Status
+
+```bash
+docker-compose ps
+```
+
+### View Logs
+
+```bash
+docker-compose logs -f telegram-socks5
+```
+
+### Health Check
+
+```bash
+docker-compose exec telegram-socks5 python /app/src/health_check.py
+```
+
+### Port Issues
+
+```bash
+# Check if port is in use
+netstat -tuln | grep :1080
+
+# Kill process using port
+sudo fuser -k 1080/tcp
+```
+
+## Security Best Practices
+
+1. **Change Default Credentials**: Always update the default admin token
+2. **Firewall Configuration**: Ensure only necessary ports are open
+3. **Regular Updates**: Keep the proxy and system updated
+4. **Monitor Logs**: Regularly check logs for suspicious activity
+5. **Backup Configuration**: Backup your proxy.env file securely
+
+### Dynamic Configuration & Privacy
+
+The bypass clients now use **dynamic configuration detection** to protect sensitive data:
+
+- **No Hardcoded IPs**: Server IP addresses are automatically detected
+- **No Hardcoded Passwords**: Credentials are loaded from secure sources
+- **Environment Variables**: Set `PROXY_SERVER_IP` and `PROXY_PASSWORD`
+- **Config File Detection**: Automatically finds `config/proxy.env` or similar files
+- **Secure Prompts**: Falls back to secure password prompts if needed
+
+#### Configuration Priority
+
+1. Environment variables (`PROXY_SERVER_IP`, `PROXY_PASSWORD`)
+2. Configuration files (`config/proxy.env`, `proxy.env`, `.env`)
+3. Connection info files (auto-generated by deployment)
+4. Secure user prompts (as fallback)
+
+#### Setup Example
+
+```bash
+# Method 1: Environment variables
+export PROXY_SERVER_IP="your.server.ip"
+export PROXY_PASSWORD="your_secure_password"
+
+# Method 2: Configuration file
+cp config-template.env proxy.env
+# Edit proxy.env with your credentials
+
+# Method 3: Let the script prompt you securely
+python3 telegram_bypass.py
+```
+
+## Advanced Configuration
+
+### Custom Telegram Domains
+
+Edit `src/main.py` to add custom Telegram domains:
+
+```python
+telegram_domains = {
+    'api.telegram.org',
+    'your-custom-domain.com',
+    # Add more domains
+}
+```
+
+### Resource Limits
+
+Modify `docker-compose.yml` for custom resource limits:
+
+```yaml
+deploy:
+  resources:
+    limits:
+      memory: 1G
+      cpus: '1.0'
+```
+
+## Performance Tuning
+
+### Connection Limits
+
+```bash
+# In proxy.env
+MAX_CONNECTIONS=2000
+RATE_LIMIT_PER_IP=20
+```
+
+### System Limits
+
+```bash
+# Increase file descriptor limits
+echo "* soft nofile 65536" >> /etc/security/limits.conf
+echo "* hard nofile 65536" >> /etc/security/limits.conf
+```
+
+## Backup and Recovery
+
+### Backup Configuration
+
+```bash
+tar -czf telegram-proxy-backup.tar.gz config/ docker-compose.yml
+```
+
+### Restore Configuration
+
+```bash
+tar -xzf telegram-proxy-backup.tar.gz
+./deploy.sh
+```
+
+## API Reference
+
+### Health Check Endpoint
+
+```bash
+curl http://localhost:8080/health
+```
+
+### Metrics Endpoint
+
+```bash
+curl http://localhost:8080/metrics
+```
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests if applicable
+5. Submit a pull request
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Support
+
+For issues and questions:
+
+1. Check the troubleshooting section
+2. Review logs for error messages
+3. Open an issue on GitHub
+4. Provide system information and logs
+
+## Changelog
+
+### v1.0.0
+
+- Initial release
+- SOCKS5 proxy implementation
+- Security features
+- Docker deployment
+- Monitoring integration
